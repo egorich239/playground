@@ -1,5 +1,6 @@
 package main
 
+// Reads a scene definition from standard input, renders it as PPM to standard output.
 import (
 	"fmt"
 	"math"
@@ -9,12 +10,13 @@ import (
 const kEps float64 = 1e-6
 const kBackgroundRadiation = 0.3
 
+// This is also used for RGB colors, in which case the values should be between 0 and 255.
 type Vec3 struct {
 	x, y, z float64
 }
-
 func (v *Vec3) norm() float64 { return math.Sqrt(v.x*v.x + v.y*v.y + v.z*v.z) }
 
+// Vector operations.
 func Add(a, b *Vec3) *Vec3          { return &Vec3{a.x + b.x, a.y + b.y, a.z + b.z} }
 func Sub(a, b *Vec3) *Vec3          { return &Vec3{a.x - b.x, a.y - b.y, a.z - b.z} }
 func Neg(a *Vec3) *Vec3             { return &Vec3{-a.x, -a.y, -a.z} }
@@ -30,12 +32,19 @@ func CrossProduct(a, b *Vec3) *Vec3 {
 func Normalize(a *Vec3) *Vec3 { return Div(a, a.norm()) }
 
 type Ray struct {
+	// dir should be normalized
 	origin, dir Vec3
 }
 
 type Shape interface {
+	// Returns color of the shape in the specified point.
 	color(p *Vec3) *Vec3
+	// Returns normal vector to the shape in the specified point.
 	n(p *Vec3) *Vec3
+	// If the ray intersects the shape, shall return the distance from 
+	// the origin to the closest intersection point. That is:
+	//   r.origin + d*r.dir == intersection_point
+	// Otherwise may return negative number, or +-Inf.
 	RayIntersect(r *Ray) float64
 }
 
@@ -67,12 +76,17 @@ func (s *Sphere) RayIntersect(r *Ray) float64 {
 
 type Plane struct {
 	center_    Vec3
+	// n_ is normal to the plane.
+	// n_, x_, y_ are pairwise orthogonal, we use the latter two to create
+	// check-board style coloring of the plane.
+	// All three vectors are normalized.
 	n_, x_, y_ Vec3
 	color_     Vec3
 }
 
 func MakePlane(center, n, color Vec3) *Plane {
 	n_ := Normalize(&n)
+	// construct an orthogonal vector to n_.
 	var x_ Vec3
 	if math.Abs(n_.x) < kEps {
 		x_ = Vec3{1, 0, 0}
@@ -83,6 +97,7 @@ func MakePlane(center, n, color Vec3) *Plane {
 	} else {
 		x_ = *Normalize(&Vec3{-n_.y, n.x, 0})
 	}
+	// 
 	y_ := *CrossProduct(n_, &x_)
 	return &Plane{center, *n_, x_, y_, color}
 }
@@ -113,7 +128,9 @@ func (s *Plane) RayIntersect(r *Ray) float64 {
 	return -p2 / p1
 }
 
+// Simple 1-step trace.
 func trace(r *Ray, scene []Shape, l *Vec3) *Vec3 {
+	// index of closest intersecting shape, and distance to it.
 	index := 0
 	distance := math.Inf(1)
 
@@ -122,44 +139,48 @@ func trace(r *Ray, scene []Shape, l *Vec3) *Vec3 {
 			continue
 		}
 		sd := shape.RayIntersect(r)
-		if sd < 0 {
-			continue
-		}
-		if sd < distance {
+		if sd >= 0 && sd < distance {
 			distance = sd
 			index = t
 		}
 	}
 
 	if math.IsInf(distance, 0) {
+		// No intersection, return black.
 		return &Vec3{}
 	}
 
+	// Reflect the ray back to the source of light.
+	// We shift r_point by (1-kEps) towards us to avoid effects caused by rounding errors. 
 	r_point := Add(&r.origin, Mult(distance*(1.0-kEps), &r.dir))
 	light_vec := Sub(l, r_point)
 	light_distance := light_vec.norm()
 	light_dir := Normalize(light_vec)
 
+	// Check whether we the shadow ray intersects anything.
 	distance = math.Inf(1)
 	for _, shape := range scene {
 		if shape == nil {
 			continue
 		}
 		sd := shape.RayIntersect(&Ray{*r_point, *light_dir})
-		if sd < 0 || sd > light_distance {
-			continue
-		}
-		if sd < distance {
+		
+		// If there's an object between us and light source, then alarm!
+		if sd >= 0 && sd < light_distance {
 			distance = sd
 			break
 		}
 	}
 
+	// We don't want to see the shadows as absolutely dark, therefore allow
+	// some background radiation.
 	bgColor := Mult(kBackgroundRadiation, scene[index].color(r_point))
 	if !math.IsInf(distance, 0) {
+		// shadow
 		return bgColor
 	}
 
+	// light
 	return Add(
 		bgColor,
 		Mult((1-kBackgroundRadiation)*
@@ -168,6 +189,7 @@ func trace(r *Ray, scene []Shape, l *Vec3) *Vec3 {
 }
 
 func render(width, height int, camera_depth float64, l *Vec3, scene []Shape) *[]Vec3 {
+	// Iterate over the scene, generate 2*width x 2*height picture with 0,0 in its center.
 	result := make([]Vec3, 4*width*height)
 
 	camera := &Vec3{0, 0, -camera_depth}
@@ -184,6 +206,7 @@ func render(width, height int, camera_depth float64, l *Vec3, scene []Shape) *[]
 func read_vector() *Vec3 {
 	var x, y, z float64
 	fmt.Scan(&x, &y, &z)
+	// invert y component to make it look more natural
 	return &Vec3{x, -y, z}
 }
 
