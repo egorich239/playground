@@ -64,14 +64,14 @@ class Vec3 {
 };
 
 class Ray {
-  public:
-    Ray(Vec3 origin, Vec3 dir) : origin_(origin), dir_(dir) {}
-    const Vec3& origin() const { return origin_; }
-    const Vec3& dir() const { return dir_; }
-    
-private:
-    Vec3 origin_;
-    Vec3 dir_;
+ public:
+  Ray(Vec3 origin, Vec3 dir) : origin_(origin), dir_(dir) {}
+  const Vec3& origin() const { return origin_; }
+  const Vec3& dir() const { return dir_; }
+
+ private:
+  Vec3 origin_;
+  Vec3 dir_;
 };
 
 class Shape {
@@ -127,55 +127,57 @@ class Sphere : public Shape {
 };
 
 class Plane : public Shape {
-  public:
-    explicit Plane(const Vec3& center, const Vec3& n, const Vec3& color)
-    : center_(center), n_(Normalize(n)), x_(GetP(n_)), y_(CrossProduct(n_, x_)), color_(color) {
-    }
+ public:
+  explicit Plane(const Vec3& center, const Vec3& n, const Vec3& color)
+      : center_(center),
+        n_(Normalize(n)),
+        x_(GetP(n_)),
+        y_(CrossProduct(n_, x_)),
+        color_(color) {}
 
-    Vec3 color(const Vec3& p) const override {
-      const Vec3 dir = p - center_;
-      const int x_coord = DotProduct(dir, x_);
-      const int y_coord = DotProduct(dir, y_);
-      const int x_mod = x_coord > 0 ? x_coord % 100 - 50 : 50 + x_coord % 100;
-      const int y_mod = y_coord > 0 ? y_coord % 100 - 50 : 50 + y_coord % 100;
-      const int pr = x_mod * y_mod;
-      return pr < 0 ? color_ : 0.5*color_;
-    }
+  Vec3 color(const Vec3& p) const override {
+    const Vec3 dir = p - center_;
+    const int x_coord = DotProduct(dir, x_);
+    const int y_coord = DotProduct(dir, y_);
+    const int x_mod = x_coord > 0 ? x_coord % 100 - 50 : 50 + x_coord % 100;
+    const int y_mod = y_coord > 0 ? y_coord % 100 - 50 : 50 + y_coord % 100;
+    const int pr = x_mod * y_mod;
+    return pr < 0 ? color_ : 0.5 * color_;
+  }
 
-    Vec3 n(const Vec3&) const override { return n_; }
+  Vec3 n(const Vec3&) const override { return n_; }
 
-    double RayIntersect(const Ray& ray) const override {
-      const double p1 = DotProduct(ray.dir(), n_);
-      const double p2 = DotProduct(ray.origin() - center_, n_);
-      if (std::abs(p2) < kEps) return 0;
-      if (std::abs(p1) < kEps) return kInf;
-      return -p2/p1;
-    }
+  double RayIntersect(const Ray& ray) const override {
+    const double p1 = DotProduct(ray.dir(), n_);
+    const double p2 = DotProduct(ray.origin() - center_, n_);
+    if (std::abs(p2) < kEps) return 0;
+    if (std::abs(p1) < kEps) return kInf;
+    return -p2 / p1;
+  }
 
-  private:
-    static Vec3 GetP(const Vec3& n) {
-      for (size_t t = 0; t < 3; ++t) {
-        if (std::abs(n.coords()[t]) < kEps) {
-          std::array<double, 3> r{0, 0, 0};
-          r[t] = 1;
-          return Vec3(r);
-        }
+ private:
+  static Vec3 GetP(const Vec3& n) {
+    for (size_t t = 0; t < 3; ++t) {
+      if (std::abs(n.coords()[t]) < kEps) {
+        std::array<double, 3> r{0, 0, 0};
+        r[t] = 1;
+        return Vec3(r);
       }
-      return Normalize(Vec3{-n.y(), n.x(), 0});
     }
+    return Normalize(Vec3{-n.y(), n.x(), 0});
+  }
 
-    Vec3 center_;
-    Vec3 n_;
-    Vec3 x_;
-    Vec3 y_;
-    Vec3 color_;
+  Vec3 center_;
+  Vec3 n_;
+  Vec3 x_;
+  Vec3 y_;
+  Vec3 color_;
 };
-
 
 const double kBackgroundRadiation = 0.3;
 
-Vec3 trace(const Ray& ray,
-           const std::vector<std::unique_ptr<Shape>>& scene, const Vec3& light_source) {
+Vec3 trace(const Ray& ray, const std::vector<std::unique_ptr<Shape>>& scene,
+           const Vec3& light_source) {
   size_t index = 0;
   double distance = +kInf;
   for (size_t t = 0; t < scene.size(); ++t) {
@@ -199,20 +201,19 @@ Vec3 trace(const Ray& ray,
   distance = +kInf;
   for (size_t t = 0; t < scene.size(); ++t) {
     const auto sd = scene[t]->RayIntersect({r_point, light_dir});
-    if (sd < 0 || sd > light_distance) continue;
-    if (sd < distance) {
+    if (sd >= 0 && sd < light_distance) {
       distance = sd;
       break;
     }
   }
-  const Vec3 bgColor = kBackgroundRadiation * scene[index]->color(r_point);
+  const Vec3 bg_color = kBackgroundRadiation * scene[index]->color(r_point);
   if (distance != kInf) {
-    return bgColor;
+    return bg_color;
   }
 
-  return bgColor +
-         (1 - kBackgroundRadiation) * std::abs(DotProduct(light_dir, 
-               scene[index]->n(r_point))) *
+  return bg_color +
+         (1 - kBackgroundRadiation) *
+             std::abs(DotProduct(light_dir, scene[index]->n(r_point))) *
              scene[index]->color(r_point);
 }
 
