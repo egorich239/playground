@@ -1,0 +1,4 @@
+/bazel-*
+/go/bin/
+/scenes/*.ppm
+.*.swp
