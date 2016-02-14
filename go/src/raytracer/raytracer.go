@@ -14,6 +14,7 @@ const kBackgroundRadiation = 0.3
 type Vec3 struct {
 	x, y, z float64
 }
+
 func (v *Vec3) norm() float64 { return math.Sqrt(v.x*v.x + v.y*v.y + v.z*v.z) }
 
 // Vector operations.
@@ -41,7 +42,7 @@ type Shape interface {
 	color(p *Vec3) *Vec3
 	// Returns normal vector to the shape in the specified point.
 	n(p *Vec3) *Vec3
-	// If the ray intersects the shape, shall return the distance from 
+	// If the ray intersects the shape, shall return the distance from
 	// the origin to the closest intersection point. That is:
 	//   r.origin + d*r.dir == intersection_point
 	// Otherwise may return negative number, or +-Inf.
@@ -75,7 +76,7 @@ func (s *Sphere) RayIntersect(r *Ray) float64 {
 }
 
 type Plane struct {
-	center_    Vec3
+	center_ Vec3
 	// n_ is normal to the plane.
 	// n_, x_, y_ are pairwise orthogonal, we use the latter two to create
 	// check-board style coloring of the plane.
@@ -97,7 +98,7 @@ func MakePlane(center, n, color Vec3) *Plane {
 	} else {
 		x_ = *Normalize(&Vec3{-n_.y, n.x, 0})
 	}
-	// 
+	//
 	y_ := *CrossProduct(n_, &x_)
 	return &Plane{center, *n_, x_, y_, color}
 }
@@ -151,7 +152,7 @@ func trace(r *Ray, scene []Shape, l *Vec3) *Vec3 {
 	}
 
 	// Reflect the ray back to the source of light.
-	// We shift r_point by (1-kEps) towards us to avoid effects caused by rounding errors. 
+	// We shift r_point by (1-kEps) towards us to avoid effects caused by rounding errors.
 	r_point := Add(&r.origin, Mult(distance*(1.0-kEps), &r.dir))
 	light_vec := Sub(l, r_point)
 	light_distance := light_vec.norm()
@@ -164,7 +165,7 @@ func trace(r *Ray, scene []Shape, l *Vec3) *Vec3 {
 			continue
 		}
 		sd := shape.RayIntersect(&Ray{*r_point, *light_dir})
-		
+
 		// If there's an object between us and light source, then alarm!
 		if sd >= 0 && sd < light_distance {
 			distance = sd
