@@ -9,3 +9,4 @@ internal val MathSqrt = Math.sqrt
 ```
 fun Multiply(x, y: Double) = x*y
 ```
+- Is there a command line tool to auto-format the code?
