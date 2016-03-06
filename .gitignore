@@ -1,4 +1,6 @@
 /bazel-*
 /go/bin/
 *.ppm
+*.jar
+*.pbm
 .*.swp
