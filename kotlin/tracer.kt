@@ -1,12 +1,8 @@
 package rt
 
-import java.lang.Math
-import java.util.Scanner
-import java.lang.System
-
 data class Vec3(val x: Double = 0.0, val y: Double = 0.0, val z: Double = 0.0) {
   val norm: Double
-    get() = Math.sqrt(x*x + y*y + z*z)
+    get() = MathSqrt(x*x + y*y + z*z)
 
   operator fun div(d: Double) = Vec3(x/d, y/d, z/d)
 
@@ -43,7 +39,7 @@ data class Sphere(val center: Vec3, val r: Double, val color: Vec3) : Shape {
     val r2 = r*r
     if (d2 > r2) return Double.NEGATIVE_INFINITY
 
-    val delta = Math.sqrt(r2 - d2)
+    val delta = MathSqrt(r2 - d2)
     return if (p - delta > 0) p - delta else p + delta
   }
 }
@@ -71,16 +67,16 @@ data class Plane(val center: Vec3, val n: Vec3, val color: Vec3) : Shape {
     val p1 = ray.dir DotProduct n_
     val p2 = (ray.origin - center) DotProduct n_
     return (
-      if (Math.abs(p2) < EPS) 0.0
-      else if (Math.abs(p1) < EPS) Double.POSITIVE_INFINITY
+      if (MathAbs(p2) < EPS) 0.0
+      else if (MathAbs(p1) < EPS) Double.POSITIVE_INFINITY
       else -p2/p1)
   }
 
   companion object {
     private fun GetP(n: Vec3) = 
-      if (Math.abs(n.x) < EPS) Vec3(1.0, 0.0, 0.0)
-      else if (Math.abs(n.y) < EPS) Vec3(0.0, 1.0, 0.0)
-      else if (Math.abs(n.z) < EPS) Vec3(0.0, 0.0, 1.0)
+      if (MathAbs(n.x) < EPS) Vec3(1.0, 0.0, 0.0)
+      else if (MathAbs(n.y) < EPS) Vec3(0.0, 1.0, 0.0)
+      else if (MathAbs(n.z) < EPS) Vec3(0.0, 0.0, 1.0)
       else Vec3(-n.y, n.x, 0.0).Normalize()
   }
 }
@@ -117,7 +113,7 @@ fun trace(ray: Ray, scene: List<Shape>, lightSource: Vec3): Vec3 {
   val bgColor = BACKGROUND_RADIATION * scene[index].color(rPoint)
   if (!distance.isInfinite()) return bgColor
 
-  return bgColor + (1.0 - BACKGROUND_RADIATION) * Math.abs(lightDir DotProduct scene[index].n(rPoint)) * scene[index].color(rPoint)
+  return bgColor + (1.0 - BACKGROUND_RADIATION) * MathAbs(lightDir DotProduct scene[index].n(rPoint)) * scene[index].color(rPoint)
 }
 
 fun render(width: Int, height: Int, cameraDepth : Double, lightSource: Vec3, scene: List<Shape>): Array<Vec3> {
@@ -131,32 +127,4 @@ fun render(width: Int, height: Int, cameraDepth : Double, lightSource: Vec3, sce
     }
   }
   return result
-}
-
-private fun Scanner.nextVector() = Vec3(nextDouble(), -nextDouble(), nextDouble())
-private fun Scanner.nextColor() = Vec3(nextInt().toDouble(), nextInt().toDouble(), nextInt().toDouble())
-
-fun main(args: Array<String>) {
-  val s = Scanner(System.`in`!!)
-
-  val width = s.nextInt()
-  val height = s.nextInt() 
-  val cameraDepth = s.nextDouble()
-  val lightSource = s.nextVector()
-  val count = s.nextInt()
-
-  var scene = mutableListOf<Shape>()
-  for (i in 1..count) {
-    when (s.next()) {
-      "S" -> scene.add(Sphere(s.nextVector(), s.nextDouble(), s.nextColor()))
-      "P" -> scene.add(Plane(s.nextVector(), s.nextVector(), s.nextColor()))
-    }
-  }
-
-  val ren = render(width, height, cameraDepth, lightSource, scene)
-
-  println("P3 ${2*width} ${2*height} 255")
-  for (c in ren) {
-    println("${c.x.toInt()} ${c.y.toInt()} ${c.z.toInt()}")
-  }
 }
