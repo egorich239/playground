@@ -118,14 +118,6 @@ fun trace(ray: Ray, scene: List<Shape>, lightSource: Vec3): Vec3 {
   if (!distance.isInfinite()) return bgColor
 
   return bgColor + (1.0 - BACKGROUND_RADIATION) * Math.abs(lightDir DotProduct scene[index].n(rPoint)) * scene[index].color(rPoint)
-  //return scene[index].color(rPoint)
-/*
-  return when (index % 3) {
-    0 -> Vec3(x=128.0)
-    1 -> Vec3(y=128.0)
-    else -> Vec3(z=128.0)
-  }
-*/
 }
 
 fun render(width: Int, height: Int, cameraDepth : Double, lightSource: Vec3, scene: List<Shape>): Array<Vec3> {
