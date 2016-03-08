@@ -1,4 +1,4 @@
-import Control.Monad
+import Control.Applicative ((<$>), (<*>))
 import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.Numbers
@@ -12,24 +12,24 @@ type Vec3 = (Double, Double, Double)
 type Color = (Int, Int, Int)
 
 data Shape = Sphere Vec3 Double Color
-           | Plain Vec3 Vec3 Color deriving Show;
+           | Plain Vec3 Vec3 Color 
+    deriving Show;
 
 fl = (parseFloat :: GenParser Char st Double)
 nt = (nat :: GenParser Char st Int)
 sep = many1 space
-vec3 = liftM3 (,,) fl (sep >> fl) (sep >> fl)
-color = liftM3 (,,) nt (sep >> nt) (sep >> nt)
+vec3 = (,,) <$> fl <*> (sep >> fl) <*> (sep >> fl)
+color = (,,) <$> nt <*> (sep >> nt) <*> (sep >> nt)
 shape =
-  try (string "S" >> sep >> liftM3 Sphere vec3 (sep >> fl) (sep >> color))
-  <|> try (string "P" >> sep >> liftM3 Plain vec3 (sep >> vec3) (sep >> color))
-sceneFile =
-  do width <- nt
-     height <- (sep >> nt)
-     cameraDepth <- (sep >> fl)
-     lightPosition <- (sep >> vec3)
-     cnt <- (sep >> nt)
-     shapes <- count cnt (sep >> shape)
-     return (width, height, cameraDepth, lightPosition, shapes)
+  try (string "S" >> sep >> Sphere <$> vec3 <*> (sep >> fl) <*> (sep >> color))
+  <|> try (string "P" >> sep >> Plain <$> vec3 <*> (sep >> vec3) <*> (sep >> color))
+sceneFile :: GenParser Char st (Int, Int, Double, Vec3, [Shape])
+sceneFile = do width <- many space >> nt
+               height <- sep >> nt
+               cameraDepth <- sep >> fl
+               lightPosition <- sep >> vec3
+               shapes <- (count <$> (sep >> nt)) >>= ($ sep >> shape)
+               return (width, height, cameraDepth, lightPosition, shapes)
 
 makeVec (x, y, z) = JSArray [
     JSRational True $ toRational x, 
