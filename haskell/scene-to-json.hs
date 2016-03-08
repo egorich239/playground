@@ -5,6 +5,8 @@ import Text.Parsec.Numbers
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Number
 import Text.JSON
+import Text.JSON.Pretty (pp_value)
+import Text.PrettyPrint (render)
 
 type Vec3 = (Double, Double, Double)
 type Color = (Int, Int, Int)
@@ -62,4 +64,4 @@ main =
        case parse sceneFile "(stdin)" c of
             Left e -> do putStrLn "Error parsing input:"
                          print e
-            Right r -> do putStrLn $ encodeStrict (buildJsValue r) 
+            Right r -> putStrLn $ render $ pp_value $ buildJsValue r
