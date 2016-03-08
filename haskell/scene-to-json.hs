@@ -10,7 +10,7 @@ type Vec3 = (Double, Double, Double)
 type Color = (Int, Int, Int)
 
 data Shape = Sphere { s_center :: Vec3, s_radius :: Double, s_color :: Color }
-           | Plain { p_origin :: Vec3, p_n :: Vec3, p_color :: Color }
+           | Plane { p_origin :: Vec3, p_n :: Vec3, p_color :: Color }
     deriving Show;
 
 sceneFile :: GenParser Char st (Int, Int, Double, Vec3, [Shape])
@@ -24,7 +24,7 @@ sceneFile = do width <- many space >> nt
 shape :: GenParser Char st Shape
 shape =
   try (string "S" >> sep >> Sphere <$> vec3 <*> (sep >> fl) <*> (sep >> color))
-  <|> try (string "P" >> sep >> Plain <$> vec3 <*> (sep >> vec3) <*> (sep >> color))
+  <|> try (string "P" >> sep >> Plane <$> vec3 <*> (sep >> vec3) <*> (sep >> color))
 
 vec3 = (,,) <$> fl <*> (sep >> fl) <*> (sep >> fl)
 color = (,,) <$> nt <*> (sep >> nt) <*> (sep >> nt)
@@ -41,7 +41,7 @@ makeVec (x, y, z) = JSArray $ map makeJsDouble [x, y, z]
 makeColor (r, g, b) = JSArray $ map makeJsInt [r, g, b]
 
 makeShapes shapes = JSArray $ map makeShape shapes
-makeShape (Plain origin n col) = makeObj [
+makeShape (Plane origin n col) = makeObj [
   ("kind", makeJsString "plane"),
   ("origin", makeVec origin),
   ("n", makeVec n),
