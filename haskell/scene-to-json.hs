@@ -1,9 +1,7 @@
 import Control.Applicative ((<$>), (<*>))
-import Text.Parsec.Char
-import Text.Parsec.Combinator
-import Text.Parsec.Numbers
+import Text.Parsec.Numbers (parseFloat)
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Number
+import Text.ParserCombinators.Parsec.Number (nat)
 import Text.JSON
 import Text.JSON.Pretty (pp_value)
 import Text.PrettyPrint (render)
@@ -11,18 +9,10 @@ import Text.PrettyPrint (render)
 type Vec3 = (Double, Double, Double)
 type Color = (Int, Int, Int)
 
-data Shape = Sphere Vec3 Double Color
-           | Plain Vec3 Vec3 Color 
+data Shape = Sphere { s_center :: Vec3, s_radius :: Double, s_color :: Color }
+           | Plain { p_origin :: Vec3, p_n :: Vec3, p_color :: Color }
     deriving Show;
 
-fl = (parseFloat :: GenParser Char st Double)
-nt = (nat :: GenParser Char st Int)
-sep = many1 space
-vec3 = (,,) <$> fl <*> (sep >> fl) <*> (sep >> fl)
-color = (,,) <$> nt <*> (sep >> nt) <*> (sep >> nt)
-shape =
-  try (string "S" >> sep >> Sphere <$> vec3 <*> (sep >> fl) <*> (sep >> color))
-  <|> try (string "P" >> sep >> Plain <$> vec3 <*> (sep >> vec3) <*> (sep >> color))
 sceneFile :: GenParser Char st (Int, Int, Double, Vec3, [Shape])
 sceneFile = do width <- many space >> nt
                height <- sep >> nt
@@ -31,33 +21,42 @@ sceneFile = do width <- many space >> nt
                shapes <- (count <$> (sep >> nt)) >>= ($ sep >> shape)
                return (width, height, cameraDepth, lightPosition, shapes)
 
-makeVec (x, y, z) = JSArray [
-    JSRational True $ toRational x, 
-    JSRational True $ toRational y, 
-    JSRational True $ toRational z]
-makeColor (r, g, b) = JSArray [
-    JSRational False $ toRational r, 
-    JSRational False $ toRational g, 
-    JSRational False $ toRational b]
+shape :: GenParser Char st Shape
+shape =
+  try (string "S" >> sep >> Sphere <$> vec3 <*> (sep >> fl) <*> (sep >> color))
+  <|> try (string "P" >> sep >> Plain <$> vec3 <*> (sep >> vec3) <*> (sep >> color))
 
-makeShapes shapes = JSArray (map makeShape shapes)
+vec3 = (,,) <$> fl <*> (sep >> fl) <*> (sep >> fl)
+color = (,,) <$> nt <*> (sep >> nt) <*> (sep >> nt)
+
+fl = parseFloat
+nt = nat
+sep = many1 space
+
+makeJsDouble = (JSRational True) . toRational
+makeJsInt = (JSRational False) . toRational
+makeJsString = JSString . toJSString
+
+makeVec (x, y, z) = JSArray $ map makeJsDouble [x, y, z]
+makeColor (r, g, b) = JSArray $ map makeJsInt [r, g, b]
+
+makeShapes shapes = JSArray $ map makeShape shapes
 makeShape (Plain origin n col) = makeObj [
-  ("kind", JSString $ toJSString "plane"),
+  ("kind", makeJsString "plane"),
   ("origin", makeVec origin),
   ("n", makeVec n),
   ("color", makeColor col)]
 makeShape (Sphere center rad col) = makeObj [
-  ("kind", JSString $ toJSString "sphere"),
+  ("kind", makeJsString "sphere"),
   ("center", makeVec center),
-  ("radius", JSRational True $ toRational rad),
+  ("radius", makeJsDouble rad),
   ("color", makeColor col)]
-buildJsValue (width, height, cameraDepth, lightPosition, shapes) =
-  makeObj [
-      ("width", JSRational False $ toRational width),
-      ("height", JSRational False $ toRational height),
-      ("cameraDepth", JSRational True $ toRational cameraDepth),
-      ("light", makeVec lightPosition),
-      ("shapes", makeShapes shapes)]
+buildJsValue (width, height, cameraDepth, lightPosition, shapes) = makeObj [
+  ("width", makeJsInt width),
+  ("height", makeJsInt height),
+  ("cameraDepth", makeJsDouble cameraDepth),
+  ("light", makeVec lightPosition),
+  ("shapes", makeShapes shapes)]
     
 main =
     do c <- getContents
