@@ -40,7 +40,7 @@ makeJsString = JSString . toJSString
 makeVec (x, y, z) = JSArray $ map makeJsDouble [x, y, z]
 makeColor (r, g, b) = JSArray $ map makeJsInt [r, g, b]
 
-makeShapes shapes = JSArray $ map makeShape shapes
+makeShapes = JSArray . (map makeShape)
 makeShape (Plane origin n col) = makeObj [
   ("kind", makeJsString "plane"),
   ("origin", makeVec origin),
